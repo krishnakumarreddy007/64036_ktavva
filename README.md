@@ -1,4 +1,6 @@
-Assignment – Setting Up R
+Business Analytics (MIS 64036) Assignments:
+
+Assignment 1 – Setting Up R
 
 Purpose:
 The purpose of this assignment is to set up and use the tools for this course.
