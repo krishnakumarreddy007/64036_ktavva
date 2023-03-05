@@ -1,4 +1,4 @@
-Business Analytics (MIS 64036) Assignments:
+Business Analytics (MIS 64036):
 
 Assignment 1 – Setting Up R
 
