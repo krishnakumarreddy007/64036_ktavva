@@ -1,0 +1,68 @@
+---
+title: "Setting Up R Assignment"
+author: "Krishna Kumar Tavva - 811283461"
+date: "2023-02-19"
+output: pdf_document
+---
+
+1. Install the ISLR library using the install.packages() command. Call the library using the library(ISLR) command to ensure that the library is correctly installed (10% of total points)
+
+```{r}
+
+
+#install.packages("ISLR") #already installed the package
+library(ISLR) #calling the library command
+```
+
+2. Create a new R-Notebook (.Rmd) file. In the first code chunk, call the ISLR library and then print the summary of the Carseats dataset. How many observations (rows) this dataset contains?
+
+```{r}  
+library(ISLR) #calling the ISLR library
+summary(Carseats) #printing the carseats summary
+nrow(Carseats) #number of observations (rows) in the dataset
+
+```
+
+3. Using the summary statistics shown above, what is maximum value of the advertising attribute?
+
+```{r}
+max(Carseats$Advertising) #maximum value of advertising attribute
+```
+
+4. Calculate the IQR of the Price attribute.
+
+```{r}
+IQR(Carseats$Price) #finding Inter Quartile Range (IQR) of Price attribute
+
+
+```
+5. Plot the Sales against Price. What do you see in there? Calculate the correlation of the two attributes. What does the sign of the correlation coefficient suggest?
+
+```{r}
+#install.packages("ggplot2") - If the package isn't installed.
+library("ggplot2") #calling the library
+
+#Using Quick Plot function to plot sales vs price relationship
+qplot(Carseats$Sales, xlab="Sales", Carseats$Price, ylab="Price", main="Sales vs Price") 
+
+```
+
+```{r}
+cor.test(x = Carseats$Sales, y = Carseats$Price) #correlation coefficient deafult method=Pearson
+```
+#Key Findings from the Correlation value
+
+Sales and Price attributes are having a linear association. 
+
+There is a mild negative correlation between Sales and Price attributes and, therefore, the correlation value(r) is -0.4449507.
+
+
+#Brief about Pearson and Spearman methods
+
+Pearson’s correlation coefficient is a statistics that measures the statistical relationship, or association, between two continuous variables. Pearson method most common method of measuring the association between variables of interest. If doesn't mention method type while calculating correlation, Pearson method is default. 
+
+Whereas, the Spearman's correlation assesses monotonic relationship (whether linear or not). Unlike Pearson, Spearman Rank can be applied to both ordinal (they are already ranked) and numerical (i.e. interval) variables. With numerical variables, we need to first sort them and use their ranking instead.
+
+Like Pearson correlation, the Spearman correlation is symmetric.
+
+Note: Though there is a association or relationship between two variables "Correlation Does not Imply Causation".
