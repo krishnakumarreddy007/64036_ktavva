@@ -2,7 +2,9 @@
 title: "Assignment_2"
 author: "Krishna Kumar Tavva - 811283461"
 date: "2023-03-09"
-output: pdf_document
+output:
+  word_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -88,6 +90,20 @@ OR %>% group_by(New_Invoice_Month) %>% summarise(Total = sum(TransactionValue))%
 
 OR %>% filter(Country =="Australia") %>% group_by(New_Invoice_Date) %>% 
   summarise(Total_Count = n()) %>% arrange((desc(Total_Count)))
+
+#4(e).The company needs to shut down the website for two consecutive hours for maintenance. What would be the hour of the day to start this so that the distribution is at minimum for the customers? The responsible IT team is available from 7:00 to 20:00 every day.
+
+transactVolumeByHour = OR %>% 
+  group_by(New_Invoice_Hour) %>% summarise(TransactionVolume =n())
+
+transactVolumeByHour = transactVolumeByHour %>% 
+  arrange(New_Invoice_Hour) %>%
+  mutate(TwoConsecutiveHourTraffic=TransactionVolume+lead(TransactionVolume),NextHour=lead(New_Invoice_Hour)) %>%
+  filter(New_Invoice_Hour>=7,New_Invoice_Hour<19)
+
+transactVolumeByHour %>% 
+  filter(TwoConsecutiveHourTraffic== min(transactVolumeByHour$TwoConsecutiveHourTraffic))
+
 
 ```
 
