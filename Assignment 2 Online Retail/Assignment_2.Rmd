@@ -92,23 +92,13 @@ OR %>% filter(Country =="Australia") %>% group_by(New_Invoice_Date) %>%
   summarise(Total_Count = n()) %>% arrange((desc(Total_Count)))
 
 #4(e).The company needs to shut down the website for two consecutive hours for maintenance. What would be the hour of the day to start this so that the distribution is at minimum for the customers? The responsible IT team is available from 7:00 to 20:00 every day.
+
+TVBH <- OR %>% group_by(New_Invoice_Hour) %>% distinct(InvoiceNo) %>%
+  summarise(TransactionVolume =n()) %>% arrange(New_Invoice_Hour) %>%
+  mutate(TCHT=TransactionVolume+lead(TransactionVolume),NextHour=lead(New_Invoice_Hour)) %>% 
+  filter(New_Invoice_Hour>=7,New_Invoice_Hour<=20)
 ```
-
-
-```{r}
-transactVolumeByHour = OR %>% 
-  group_by(New_Invoice_Hour) %>% summarise(TransactionVolume =n())
-
-transactVolumeByHour = transactVolumeByHour %>% 
-  arrange(New_Invoice_Hour) %>%
-  mutate(TwoConsecutiveHourTraffic=TransactionVolume+lead(TransactionVolume),NextHour=lead(New_Invoice_Hour)) %>%
-  filter(New_Invoice_Hour>=7,New_Invoice_Hour<19)
-
-transactVolumeByHour %>% 
-  filter(TwoConsecutiveHourTraffic== min(transactVolumeByHour$TwoConsecutiveHourTraffic))
-
-#transactVolumeByHour = OR %>% group_by(New_Invoice_Hour) %>% summarise(TransactionVolume =n()) %>% arrange(New_Invoice_Hour) %>% mutate(TwoConsecutiveHourTraffic=TransactionVolume+lead(TransactionVolume), NextHour=lead(New_Invoice_Hour)) %>% filter(New_Invoice_Hour>=7,New_Invoice_Hour<19,TwoConsecutiveHourTraffic== min(transactVolumeByHour$TwoConsecutiveHourTraffic))
-```
+#As per Two Consecutive Hour Traffic(TCHT), minimum distribution is on the last two hours; hence, company should shut down the website at 18:00 till 20:00
 
 # 5.Plot the histogram of transaction values from Germany. Use the hist() function to plot. 
 
@@ -119,6 +109,7 @@ summarise(Total=sum(TransactionValue))
 hist(Germany$Total, main = "Histogram of Germany's Transaction Values", 
      xlab="Transactions", ylab="Frequency of Transactions")
 ```
+
 
 # 6.Which customer had the highest number of transactions? Which customer is most valuable (i.e. highest total sum of transactions)?
 
