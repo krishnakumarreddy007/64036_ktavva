@@ -1,0 +1,175 @@
+---
+title: "Assignment_3"
+author: "Krishna Kumar Tavva - 811283461"
+date: "2023-03-31"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls()) #clear all data from environment
+```
+
+# install functions and call libraries needed
+
+```{r}
+library(ISLR)
+library(dplyr)
+library(tidyverse)
+library(mlbench)
+library(tinytex)
+```
+
+# 1.Load the given Data
+
+```{r}
+set.seed(2017) 
+X=runif(100)*10 
+Y=X*4+3.45 
+Y=rnorm(100)*0.29*Y+Y
+```
+#1(a). Plotting Y against X
+```{r}
+plot(Y~X)
+```
+#Based on the plot do you think we can fit a linear model to explain Y based on X?
+
+#Yes, I think that a linear model would be a good choice here to explain Y based on X because of the correlation which can be seen between the variables. As we can X is directly proportional to Y and indicates positive correlation across the attributes.
+
+
+#1(b) & 1(c). Constructing a simple linear model of Y based on X
+```{r}
+Model <- lm(Y~X)
+summary(Model)
+```
+#The equation that explains Y based on X is Y = 4.4655+3.6108*X
+
+#What is the accuracy of this model?
+
+#The accuracy of the model is explained by the Multiple R - Squared Value which is 0.6517 indicating that the model is 65.17% accurate. 
+
+#Explain the relation between the Coefficient of Determination - R Squared of the model above with that to the correlation coefficient of X and Y
+```{r}
+
+
+#Coefficient of Determination - R Squared
+summary(Model)$r.squared
+
+#Correlation coefficient of X and Y
+cor(Y,X)^2
+```
+
+#Coefficient of Determination= (Correlation Coefficient)^2
+
+# 2. Using the mtcars dataset
+```{r}
+head(mtcars)
+```
+#2(a). James wants to buy a car. He and his friend, Chris, have different opinions about the Horse Power (hp) of cars. James think the weight of a car (wt) can be used to estimate the Horse Power of the car while Chris thinks the fuel consumption expressed in Mile Per Gallon (mpg), is a better estimator of the (hp). Who do you think is right? Construct simple linear models using mtcars data to answer the question.
+
+Determining the Horse Power Basis the Weight
+```{r}
+Model_1 <- lm(hp~wt,data=mtcars)
+summary(Model_1)
+```
+#James thinks that horse power (hp) of a car can be determined based on the weight of the car (wt), based on his thoughts we built the linear model to understand the predictive power of weight over horse power and got to see that 43.39% of the variability in horse power (hp) can be determined by the weight (wt).
+
+
+#Determining the Horse Power Basis the Mile Per Gallon
+```{r}
+Model_2 <- lm(hp~mpg,data=mtcars)
+summary(Model_2)
+```
+#While Chris thinks that horse power (hp) of a car can be determined based on the mile per gallon (mpg), based on his thoughts we built the linear model to understand the predictive power of mile per gallon over horse power and got to see that 60.24% of the variability in horse power (hp) can be determined by the mile per gallon (mpg).
+
+#of the above two correlations, the latter one has more reliable Mulitiple R-squared value. So, miles per gallon actually makes more sense in determining the horse power of a car. This can help us know that Chris's thoughts were right when compared to that with James.
+
+
+#2(b). Build a model that uses the number of cylinders (cyl) and the mile per gallon (mpg) values of a car to predict the car Horse Power (hp).
+```{r}
+Model_3 <- lm(hp~cyl+mpg,data=mtcars)
+summary(Model_3)
+```
+#Using this model, what is the estimated Horse Power of a car with 4 cylinder and mpg of 22?
+```{r}
+predict(Model_3,data.frame(cyl=c(4),mpg=c(22)))
+```
+#The estimated horsepower (hp) with 4 cylinders (cyl) and with a mpg of 22 is "88.93618 hp".
+#Formula => ŷ = 54.067 + 23.979 * cyl - 2.775 * mpg = 54.067 + 23.979(4) - 2.775(22) + = 88.933
+
+# 3. Using the Boston Housing dataset from the "mlbench" package
+
+```{r}
+data(BostonHousing)
+head(BostonHousing)
+```
+#3(a). Building a model to estimate the median value of owner-occupied homes (medv) based on the following variables: crime crate (crim), proportion of residential land zoned for lots over 25,000 sq.ft (zn), the local pupil-teacher ratio (ptratio) and weather of the tract bounds Chas River(chas).
+```{r}
+Model_4 <- lm(medv~crim+zn+ptratio+chas,data=BostonHousing)
+summary(Model_4)
+```
+#Is this an accurate model?
+
+#The multiple r squared value is 0.3599 which accounts to nearly 36%. This tells us that model is able to define 36% of the variability in owner-occupied homes (medv) based on the crime crate (crim), proportion of residential land zoned for lots over 25,000 sq.ft (zn), the local pupil-teacher ratio (ptratio) and the tract bounds along the Chas River (chas) thereby making it 36% accurate.
+
+#This won't be considered as a good model because the predictive power on the variability of the median value of occupied home is just 36%. 
+
+#3(b)(i). Imagine two houses that are identical in all aspects but one bounds the Chas River and the other does not. Which one is more expensive and by how much?
+
+Note: chas is a factorial variable, if the house bounds Chas river then the value is going to be 1 and if the house not bounds the Chas river the the value is 0.
+
+#Based on the above model built, if the house bounds the Chas River then the price of that house is 
+
+$$\text medv = intercept\hspace{1mm}+ crim\hspace{1mm}+zn\hspace{1mm}+ptratio\hspace{1mm}+chas$$
+
+$$\text medv = 49.91868\hspace{1mm}+(-0.26018)\hspace{1mm}+0.07073\hspace{1mm} + (-1.49367)\hspace{1mm} + 4.58393(1)$$
+
+$$\text medv =   52.81949\hspace{2mm} in\hspace{2mm} 1000\hspace{2mm} dollars\hspace{2mm} (if\hspace{2mm} the\hspace{2mm} house\hspace{2mm} is\hspace{2mm} bound\hspace{2mm} to\hspace{2mm} the\hspace{2mm} chas\hspace{2mm} river) $$
+
+#If the house not bounds the Chas River then the price of the house is 
+
+$$\text medv = 49.91868\hspace{1mm}+(-0.26018)\hspace{1mm}+0.07073\hspace{1mm} + (-1.49367)\hspace{1mm} + 4.58393(0)$$
+
+$$\text medv = 48.23556\hspace{2mm} in\hspace{2mm} 1000\hspace{2mm} dollars\hspace{2mm} (if\hspace{2mm} the\hspace{2mm} house\hspace{2mm} is\hspace{2mm} not\hspace{2mm} bound\hspace{2mm} to\hspace{2mm} the\hspace{2mm} chas\hspace{2mm} river)$$
+
+#Based on the above, the expensive house is the one which bounds chas river by 4.58393 in 1000$ when compared to that with the house which is not bound to the chas river
+
+#3(b)(ii). Imagine two houses that are identical in all aspects but in the neighborhood of one of them the pupil-teacher ratio is 15 and in the other one is 18. Which one is more expensive and by how much?
+
+#Pupil to Teacher ratio is per how many students a teacher has been allocated.
+
+For 15 units of change in the pupil teacher ratio the price of the house is going to change by 15(-1.49367) = -22.40505 in 1000$.
+
+$$\text medv = intercept\hspace{1mm}+ crim\hspace{1mm}+zn\hspace{1mm}+ptratio\hspace{1mm}+chas$$
+
+$$\text medv = 49.91868\hspace{1mm}+(-0.26018)\hspace{1mm}+0.07073\hspace{1mm} + 15(-1.49367)\hspace{1mm} + 4.58393$$
+
+$$\text medv =   31.90811\hspace{2mm} in\hspace{2mm} 1000\hspace{2mm} dollars\hspace{2mm} (if\hspace{2mm} the\hspace{2mm} pupil\hspace{2mm} teacher\hspace{2mm} ratio\hspace{2mm} is\hspace{2mm} 15) $$
+#If the units change to 18 then the price of the house is going to change by 18(-1.49367) = -26.88606 in 1000$.
+
+$$\text medv = 49.91868\hspace{1mm}+(-0.26018)\hspace{1mm}+0.07073\hspace{1mm} + 18(-1.49367)\hspace{1mm} + 4.58393$$
+
+$$\text medv =   27.4271\hspace{2mm} in\hspace{2mm} 1000\hspace{2mm} dollars\hspace{2mm} (if\hspace{2mm} the\hspace{2mm} pupil\hspace{2mm} teacher\hspace{2mm} ratio\hspace{2mm} is\hspace{2mm} 18) $$
+
+#The expensive house is going to be where the ptratio is 15 with a difference of 4.48101 in 1000$ with that to the pt ratio of 18
+
+#3(c). Which of the variables are statistically important (i.e. related to the house price)?
+
+#It's interesting to see that all the independent variables which are helping determine the median value of the owner occupied home (medv) are shown to be statistically significant between 0 and 0.001. These variables are crime rate (crim), the local pupil-teacher ratio (ptratio), proportion of residential land zoned for lots over 25,000 sq.ft (zn) and the tract bounds along the Chas River (chas).
+
+#3(d). Use the anova analysis and determine the order of importance of these four variables
+```{r}
+imp_var <- anova(Model_4)
+imp_var
+```
+#Based on the anova analysis the order of importance is determined by using Sum Sq (variability) and the order is as follows:
+
+#1. crime crate (crim) = 6440.8
+
+#2. the local pupil-teacher ratio (ptratio) = 4709.5
+
+#3. proportion of residential land zoned for lots over 25,000 sq.ft (zn) = 3554.3
+
+#4. the tract bounds the Chas River (chas) = 667.2
