@@ -1,0 +1,533 @@
+---
+title: "BA-PROJECT_GROUP-8"
+authors: Peddireddigari Jyothsna, Nandini Raveendran Nair Subhadra, Srujana Kasturi,
+  Krishna Kumar Tavva
+date: "2023-04-25"
+output:
+  word_document: default
+  pdf_document: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Installing and Loading the required packages
+
+```{r}
+library(ISLR)
+library(caret)
+library(dplyr)
+library(class)
+library(e1071)
+library(tidyverse)
+library(ggplot2)
+library(ggcorrplot)
+library(rattle)
+library(gmodels)
+library(modelr)
+library(Hmisc)
+library(missForest)
+library(pROC)
+library(ROCR)
+library(cutpointr)
+library(ROSE)
+library(cowplot)
+library(tinytex)
+library(caTools)
+library(broom)
+library(rpart)
+library(rpart.plot)
+```
+
+Loading the Churn dataset to R environment
+
+```{r}
+#Included both csv file and .Rdata file in the same working directory where Rmd file is saved
+Raw_Churn_data<- read.csv("Churn_Train.csv")
+
+load(file = "Customers_To_Predict.RData",envir = globalenv())
+
+```
+
+Attributes in the dataset
+```{r}
+colnames(Raw_Churn_data)
+```
+```{r}
+str(Raw_Churn_data)
+
+```
+
+
+Removing the columns that are not needed
+
+```{r}
+Churn_Train_Data<- Raw_Churn_data[, -c(1:3)]
+colnames(Churn_Train_Data)
+```
+
+Converting international plan, voice mail plan and churn variables to binary
+
+```{r}
+Churn_Train_Data$international_plan<- ifelse(Churn_Train_Data$international_plan =="yes",1,0)
+
+Churn_Train_Data$voice_mail_plan<- ifelse(Churn_Train_Data$voice_mail_plan =="yes",1,0)
+
+Churn_Train_Data$churn<- ifelse(Churn_Train_Data$churn =="yes",1,0)
+
+```
+
+Verify any NA values present in the dataset
+```{r}
+any(is.na.data.frame(Churn_Train_Data))
+```
+
+```{r}
+colMeans(is.na(Churn_Train_Data))*100
+```
+Review All the columns after data manipulation and attribute exclusion
+```{r}
+summary(Churn_Train_Data)
+```
+
+Imputing the missing values with the medians of the columns as the mean
+value may be very sensitive to outliers.
+
+```{r}
+#Treating the null values with median of the column.
+
+Median_ofColumns<- apply(Churn_Train_Data,2,median, na.rm=T)
+for (i in colnames(Churn_Train_Data)) Churn_Train_Data[,i][is.na(Churn_Train_Data[,i])]<- Median_ofColumns[i]
+
+```
+
+```{r}
+any(is.na.data.frame(Churn_Train_Data))#checking for any null values present after imputation.
+```
+
+```{r}
+str(Churn_Train_Data)
+```
+
+Treating the churn column as numbers can cause issues when using the
+column in certain functions or models that expect a factor variable.so
+we are converting the number to factor.
+
+```{r}
+
+Churn_Train_Data$churn<- as.factor(Churn_Train_Data$churn)#converting the integers to factors
+Churn_Train_Data$international_plan<-as.factor(Churn_Train_Data$international_plan)
+
+Churn_Train_Data$voice_mail_plan<- as.factor(Churn_Train_Data$voice_mail_plan)
+
+#Churn_Train_Data$churn<- #factor(Churn_Train_Data$churn,levels(Churn_Train_Data$churn)[c(2,1)])
+#Changing the order of the churn factor levels.
+
+```
+
+## Exploratory Analysis
+
+### Perform Exploratory Analysis on Numerical Variables
+
+```{r}
+# Explore the distribution of each variable using histograms
+Churn_Train_Data %>% 
+  select_if(is.numeric) %>% 
+  gather() %>% 
+  ggplot(aes(value)) +
+  facet_wrap(~key, scales = "free") +
+  geom_histogram()
+
+
+#View(Churn_Train)
+
+# Explore the relationship between pairs of variables using scatter plots
+pairs(  Churn_Train_Data %>% 
+  select_if(is.numeric))
+```
+
+## Data Partition
+
+#### Partitioning the Churn train data to training set of 75% and validation set of 25%.
+
+```{r}
+set.seed(123)
+
+Data_Partition<- createDataPartition(Churn_Train_Data$churn,p=0.75,list = FALSE)
+train_data<- Churn_Train_Data[Data_Partition,]
+
+Validation_Data<- Churn_Train_Data[-Data_Partition,]
+
+```
+
+## Function For Threshold Identification
+
+#### Created a function to find the threshold cutoff that balances Sensitivity, Specificity and Accuracy
+
+```{r}
+FindThreshold <- function(actual, predict) {
+  # Create a sequence of decimal numbers from 0 to 1 with a step of 0.1
+seq_decimal <- seq(from = 0.02, to = 1, by = 0.02)
+
+df <- data.frame(Threshold=0,Sensitivity=0,Specificity=0,Accuracy=0)
+
+rowNumber =1
+# Iterate over the sequence using a for loop
+for (i in seq_decimal) {
+ predict_Lreg1<- ifelse(predict > i, 1, 0)
+
+ x <- table(actual,predict_Lreg1)
+ df[rowNumber,1]=i 
+ df[rowNumber,2]=(x[4]/(x[2]+x[4]))
+ df[rowNumber,3]=x[1]/(x[1]+x[3])
+ df[rowNumber,4]=(x[1]+x[4])/(x[2]+x[4]+x[1]+x[3])
+ 
+ rowNumber=rowNumber+1
+}
+return(df)
+}
+
+```
+
+#### Create Function to calculate Metrics for the table output
+```{r}
+
+MetricCalculation <- function(x){
+
+  metriclist <- list(r1=c( 
+    TrueNegative=as.integer(x[1]),
+    TruePositive=as.integer(x[4]),
+    FalsePositve=as.integer(x[3]),
+    FalseNegative=as.integer(x[2])),
+    r2=c(
+     sensitivityVal=as.double((x[4]/(x[2]+x[4])),4),
+                     SpecificityVal=round(x[1]/(x[1]+x[3]),4),
+                      Accuracy=(x[1]+x[4])/(x[2]+x[4]+x[1]+x[3])))
+  
+  return(metriclist)
+}
+
+```
+
+
+
+## Logistic Regression
+
+```{r}
+
+Logistic_Model<- glm(churn~.,data = train_data, family = "binomial")
+summary(Logistic_Model)
+
+```
+
+```{r}
+predict_Lreg<- predict(Logistic_Model,Validation_Data, type = "response")
+head(predict_Lreg)   
+
+```
+#### Find the cutoff value
+To identify the right threshold using the function built to calculate sensitivity, specificity and accuracy by changing the threshold value for identifying churn yes or no.
+
+```{r}
+df <- FindThreshold(Validation_Data$churn,predict_Lreg)
+df
+```
+
+For Calculations we changed churn =Yes as 1 and churn=No as 0. Threshold 0.14 is selected after reviewing the threshold cut off table and metrics. Even though accuracy and Specificity are better with 0.16, we chose 0.14 as the customer churn(churn=Yes) costs telecom company more than the customers that would continue with the company(churn= No).
+```{r}
+#print 
+df %>% filter(Threshold=="0.14")
+```
+
+we can pick the best threshold value to balance the prediction.
+
+```{r}
+lg_threshold <- 0.14
+
+predict_Lreg1<- ifelse(predict_Lreg > lg_threshold, 1, 0)
+#predict_Lreg
+tbl_Lreg <- table(Validation_Data$churn, predict_Lreg1)
+
+tbl_Lreg
+```
+
+```{r}
+#finding the accuracy
+missing_class<- mean(predict_Lreg1 != Validation_Data$churn)
+print(paste('Accuracy=', 1 - missing_class))
+
+```
+
+#### ROC-AUC
+
+```{r}
+ROC_Predict<- prediction(predict_Lreg1, Validation_Data$churn)
+Roc_perform<- performance(ROC_Predict, measure = "tpr", x.measure = "fpr")
+
+AUC_perform<- performance(ROC_Predict, measure = "auc")
+AUC_perform<- AUC_perform@y.values[[1]]
+AUC_perform
+
+
+
+```
+#### Plot ROC Curve
+```{r}
+plot.roc(Validation_Data$churn,predict_Lreg1)
+
+```
+
+```{r}
+Acc_perform<- performance(ROC_Predict, measure = "acc")
+Acc_perform@y.values[[1]]
+```
+Note:  confusionMatrix function has provided sensitivity and specificity results in the reverse order
+```{r}
+#printing the confusion matrix to see the prediction performance of the model
+confusionMatrix(as.factor(predict_Lreg1),as.factor(Validation_Data$churn))
+
+
+```
+
+```{r}
+
+CrossTable( Validation_Data$churn,predict_Lreg1,prop.chisq = F)
+
+```
+#### Snapshot of Final Metrics for the validation data using Logistic regression 
+```{r}
+MetricCalculation(tbl_Lreg)
+```
+
+
+
+## KNN model
+
+```{r}
+#set.seed(125)
+
+KNN_Model<- knn(train = train_data[,1:17],test =Validation_Data[,1:17], cl= train_data$churn, 
+                k=60 ,prob = TRUE ) 
+
+
+probs <- attr(KNN_Model,"prob")
+
+dfWithProbYes <- data.frame(KNN_Model,probs)
+
+dfWithProbYes <- ifelse(dfWithProbYes$KNN_Model==1,dfWithProbYes$probs,1-dfWithProbYes$probs)
+
+head(dfWithProbYes)
+
+```
+#### Find the cutoff value
+
+```{r}
+df_knn <- FindThreshold(Validation_Data$churn,dfWithProbYes)
+df_knn
+```
+
+#### Threshold selection from the combination found in the df_knn
+
+```{r}
+#print 
+df_knn %>% filter(Threshold=="0.14")
+```
+
+we can pick the best threshold value to balance the prediction using the combination of sensitivity, specificity and accuracy.
+
+```{r}
+knn_threshold <- 0.14
+
+predict_knn<- ifelse(dfWithProbYes > knn_threshold, 1, 0)
+#predict_Lreg
+tbl_knn <- table(Validation_Data$churn, predict_knn)
+
+tbl_knn
+```
+Note:  confusionMatrix function has provided sensitivity and specificity results in the reverse order
+```{r}
+confusionMatrix(as.factor(predict_knn),Validation_Data$churn)
+
+
+```
+
+```{r}
+CrossTable(Validation_Data$churn,predict_knn)
+```
+
+
+```{r}
+
+MetricCalculation(tbl_knn)
+```
+
+
+
+## Decision Tree Model
+
+#### Build and Prune Decision tree using the best CP value
+
+```{r}
+
+
+
+Dec_tree_model<- rpart(churn~., data = train_data, method = "class", 
+                       control = rpart.control(minsplit = 40))
+
+#Find the best cp value for pruning decision tree
+Best_cp<- Dec_tree_model$cptable[which.min(Dec_tree_model$cptable[,"xerror"]),"CP"]
+
+#Prune decision tree based on the cp value identified by building base model
+Dec_tree_model <- prune(Dec_tree_model, cp=Best_cp)
+
+summary(Dec_tree_model)
+
+```
+
+```{r}
+#Probability prediction
+Probability_DecisionTree <- predict(Dec_tree_model, newdata = Validation_Data, type = "prob")
+
+#calculating AUC Value
+ROC_Predict_dt<- prediction(Probability_DecisionTree[,2], Validation_Data$churn)
+Roc_perform_dt<- performance(ROC_Predict_dt, measure = "tpr", x.measure = "fpr")
+
+AUC_perform_dt<- performance(ROC_Predict_dt, measure = "auc")
+AUC_perform_dt<- AUC_perform_dt@y.values[[1]]
+AUC_perform_dt
+
+```
+
+```{r}
+df_dt <- FindThreshold(Validation_Data$churn,Probability_DecisionTree[,2] )
+df_dt
+```
+
+we can pick the best threshold value to balance the prediction.
+
+So, 0.10 is selected which has better sensitivity and
+specificity combined resulted in better accuracy as well.
+```{r}
+dt_threshold <- 0.10
+predict_dt<- ifelse(Probability_DecisionTree[,2] > dt_threshold, 1, 0)
+
+tbl_dt <- table(Validation_Data$churn, predict_dt)
+
+tbl_dt
+
+```
+Note:  confusionMatrix function has provided sensitivity and specificity results in the reverse order
+```{r}
+#printing the confusion matrix to see the prediction performance of the model
+confusionMatrix(as.factor(predict_dt),as.factor(Validation_Data$churn))
+
+```
+
+#### Plot Decision Tree Model
+
+```{r}
+fancyRpartPlot(Dec_tree_model,cex=0.4)
+```
+
+```{r}
+
+
+
+```
+
+```{r}
+
+CrossTable(Validation_Data$churn,predict_dt,prop.chisq = F)
+
+```
+
+
+```{r}
+MetricCalculation(tbl_dt)
+```
+Metrics output for model selection
+```{r}
+data.frame("Prediction Models"= c("Logistic Regression","KNN","Decision Tree")
+           ,Sensitivity=c(MetricCalculation(tbl_Lreg)[[2]][1],MetricCalculation(tbl_knn)[[2]][1],MetricCalculation(tbl_dt)[[2]][1])
+           ,Specificity=c(MetricCalculation(tbl_Lreg)[[2]][2],MetricCalculation(tbl_knn)[[2]][2],MetricCalculation(tbl_dt)[[2]][2])
+           ,Accuracy=c(MetricCalculation(tbl_Lreg)[[2]][3],MetricCalculation(tbl_knn)[[2]][3],MetricCalculation(tbl_dt)[[2]][3])
+           )
+           
+```
+
+## Model Selection
+After comparing the sensitivity, specificity, and accuracy metrics of the three models built in the project, the Decision tree and Logistic regression have the best sensitivity. Even though decision tree and logistic regression have similar sensitivity, the specificity and accuracy of logistic regression are lower, which could cost the telecom company significantly higher costs as the target customers for reducing churn will increase if specificity is low. So, the Decision tree has the best sensitivity, specificity, and accuracy, resulting in lower marketing costs to retain ABC telecom customers that are more likely to churn.
+
+#### Decision Tree is the best model of three models built as part of the project.
+
+
+
+## Predict Churn for Customers_To_Predict 
+
+```{r}
+#finding the number of rows in the customers to predict dataset.
+count(Customers_To_Predict)
+
+```
+
+```{r}
+#printing the summary of the testset
+summary(Customers_To_Predict)
+
+```
+
+```{r}
+#checking for any null values 
+any(is.na(Customers_To_Predict))
+
+```
+
+```{r}
+#finding the percentage of null values 
+colMeans(is.na(Customers_To_Predict))*100
+
+```
+
+```{r}
+
+Customers_To_Predict$international_plan<- ifelse(Customers_To_Predict$international_plan=="yes",1,0)
+Customers_To_Predict$voice_mail_plan<- ifelse(Customers_To_Predict$voice_mail_plan=="yes",1,0)
+
+```
+
+```{r}
+#converting the numbers into factors
+Customers_To_Predict$international_plan<- as.factor(Customers_To_Predict$international_plan)
+
+Customers_To_Predict$voice_mail_plan<- as.factor(Customers_To_Predict$voice_mail_plan)
+
+```
+
+
+
+```{r}
+#For logistic regression change the below code with predict(Logistic_Model,newdata = Customers_To_Predict, type = "response")
+
+#running the predictions using the best decision model built.
+predict_BestTree_Model<- predict(Dec_tree_model, newdata = Customers_To_Predict, type = "prob" )
+```
+
+#### Using the threshold identified from the decision tree built on the train data. Customer_to_predict output data churns are determined from the probabilities.
+
+```{r}
+
+PredictedChurn <- ifelse(predict_BestTree_Model[,2] > dt_threshold, 1, 0)
+
+summary(as.factor(PredictedChurn))
+```
+
+
+
+```{r}
+#Save customerto predict data with predicted churn to the decisiontreeoutput.csv
+write.csv(cbind(Customers_To_Predict,PredictedChurn),file='DecisionTreeOutput.csv')
+```
